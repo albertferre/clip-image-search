@@ -98,6 +98,37 @@ def get_text_embeddings(string, _model, _processor):
     text_embeds = outputs["text_embeds"].detach().numpy()
     return text_embeds
 
+@st.cache_data
+def app_info():
+    """
+    Display information and usage instructions for the app.
+    """
+    st.title("Streamlit Image Search App")
+
+    st.markdown("""
+        This is a Streamlit web application for searching and displaying similar images using the CLIP model.
+
+        ## Overview
+
+        The application utilizes the [CLIP model](https://openai.com/research/clip) from [Hugging Face](https://huggingface.co/)'s Transformers library to calculate image and text embeddings. Users can input text, and the app will find and display the top three most similar images from a predefined set of URLs.
+
+        ## Usage
+
+        ### **Text-Based Image Search:** (Model Tab)
+        *Enter text to find images similar to the provided description.*
+
+        The "Model" tab is like a smart photo searcher. You can tell it what you're looking for, and it will find the top three pictures that are most like your description.
+
+        **Example:** If you type "alcoholic drinks," the model will show you three pictures that are most related to the idea of alcoholic drinks.
+
+        Feel free to type in different things and see what pictures the model finds for you!
+
+        ### **Show All Images:** (Show All Images Tab)
+        *Explore all images used in the model*
+
+        The "All Photos" tab is like a big photo album. It shows you all the pictures that the model knows about. You can use this tab to check out and enjoy all the images the model has seen.
+    """)
+
 def main():
     """
     Main function for Streamlit app.
@@ -111,10 +142,12 @@ def main():
     st.sidebar.title("Sidebar")
 
     # Add options to the sidebar
-    option = st.sidebar.radio("Choose an option", ["Model", "Show all images"])
+    option = st.sidebar.radio("Choose an option", ["Introduction", "Model", "Show all images"])
 
     # Show content based on selected options
-    if option == "Model":
+    if option == "Introduction":
+        app_info()
+    elif option == "Model":
         text_input = st.text_input("Enter text to find similarity:")
         text_embeds = get_text_embeddings(text_input, model, processor)
         cosine_similarities = cosine_similarity(image_embeds, text_embeds)
