@@ -1,2 +1,6 @@
 git+https://github.com/huggingface/transformers.git@main#egg=transformers
 torch
+streamlit==1.30.0
+scikit-learn==1.4.0
+wrapt==1.16.0
+termcolor==2.4.0

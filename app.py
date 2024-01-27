@@ -9,7 +9,7 @@ import logging
 
 
 # Crear un formato personalizado
-log_format = "%(asctime)s %(levelname)s:%(name)s:%(message)s"
+log_format = "%(asctime)s [%(levelname)s]%(name)s - %(message)s"
 date_format = "%Y-%m-%d %H:%M:%S"
 # formatter = logging.Formatter(log_format, datefmt=date_format)
 logging.basicConfig(level=logging.INFO, format=log_format)
@@ -100,15 +100,13 @@ def main():
 
         # image_index = np.argmax(cosine_similarities)
         image_indexs = np.argsort(cosine_similarities_array)
-        print(np.argsort(cosine_similarities_array))
-        print(cosine_similarities_array)
 
         for image_index in image_indexs[-3:][::-1]:
 
             image = read_image(urls[image_index])
             st.image(image, caption="Most similar image {image_index}", use_column_width=True)
-        st.write("Similitud del coseno entre texto e imágenes:")
-        st.table(cosine_similarities)
+        # st.write("Similitud del coseno entre texto e imágenes:")
+        # st.table(cosine_similarities)
 
     else:
         st.write("All images used in model")
