@@ -7,13 +7,11 @@ from transformers import CLIPProcessor, CLIPModel
 from io import BytesIO
 import logging
 
-
-# Crear un formato personalizado
+# Set up custom logging format
 log_format = "%(asctime)s [%(levelname)s]%(name)s - %(message)s"
-date_format = "%Y-%m-%d %H:%M:%S"
-# formatter = logging.Formatter(log_format, datefmt=date_format)
 logging.basicConfig(level=logging.INFO, format=log_format)
 
+# URLs of images
 URLS = [
     "https://lh5.googleusercontent.com/p/AF1QipMIXre2FHhrB9k-bxyzhV0rXTsBuzgcrkjZi16d=w426-h240-k-no",
     "https://lh5.googleusercontent.com/p/AF1QipOmu-WoAyUegSOwpkKLi25Lusu940Brh7o6G-I_=w426-h240-k-no",
@@ -32,14 +30,13 @@ URLS = [
     "https://lh5.googleusercontent.com/p/AF1QipO6TLBLdU4YUhKc4GqB0-mNTa1CubFoFGnSZyom=w426-h240-k-no",
     "https://lh5.googleusercontent.com/p/AF1QipPEPbvyumkfEG9vZeM6DsrYS0WGyMeK_SgOwkPz=w408-h304-k-no",
     "https://lh5.googleusercontent.com/p/AF1QipOZ1IENK7UHnLPCh0-msycG_-iBux0q30uxPfBQ=w426-h240-k-no"
-
-
 ]
 
 
-# Cargar modelo y procesador CLIP
+
 @st.cache_resource
 def get_models():
+    """Load CLIP model and processor."""
     logging.info("Loading models")
     model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
     processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -47,17 +44,34 @@ def get_models():
 
 @st.cache_resource
 def get_image_embeddings(_model, _processor):
+    """
+    Calculate image embeddings for the given URLs.
+
+    Parameters:
+    - _model (CLIPModel): CLIP model.
+    - _processor (CLIPProcessor): CLIP processor.
+
+    Returns:
+    - numpy.ndarray: Image embeddings.
+    """
     logging.info("Calculating image embeddings")
     images = [Image.open(requests.get(u, stream=True).raw) for u in URLS]
-
     inputs = _processor(text=["test"], images=images, return_tensors="pt", padding=True)
-
     outputs = _model(**inputs)
     image_embeds = outputs["image_embeds"].detach().numpy()
     return image_embeds
 
 @st.cache_data
 def read_image(url):
+    """
+    Read and return an image from the specified URL.
+
+    Parameters:
+    - url (str): URL of the image.
+
+    Returns:
+    - PIL.Image.Image: Image object.
+    """
     logging.info(f"Reading image from {url}")
     response = requests.get(url)
     image = Image.open(BytesIO(response.content))
@@ -65,58 +79,60 @@ def read_image(url):
 
 @st.cache_resource
 def get_text_embeddings(string, _model, _processor):
-    logging.info("Calculating input text embeddings")
-    # default image. The modelo doesn't work without an image input
-    url = "https://fastly.picsum.photos/id/188/200/200.jpg?hmac=TipFoTVq-8WOmIswCmTNEcphuYngcdkCBi4YR7Hv6Cw"
-    image = Image.open(requests.get(url, stream=True).raw)
+    """
+    Calculate text embeddings for the given input text.
 
+    Parameters:
+    - string (str): Input text.
+    - _model (CLIPModel): CLIP model.
+    - _processor (CLIPProcessor): CLIP processor.
+
+    Returns:
+    - numpy.ndarray: Text embeddings.
+    """
+    logging.info("Calculating input text embeddings")
+    default_image_url = "https://fastly.picsum.photos/id/188/200/200.jpg?hmac=TipFoTVq-8WOmIswCmTNEcphuYngcdkCBi4YR7Hv6Cw"
+    image = Image.open(requests.get(default_image_url, stream=True).raw)
     inputs = _processor(text=[string], images=image, return_tensors="pt", padding=True)
     outputs = _model(**inputs)
     text_embeds = outputs["text_embeds"].detach().numpy()
     return text_embeds
 
 def main():
-
+    """
+    Main function for Streamlit app.
+    """
     urls = URLS
     model, processor = get_models()
     image_embeds = get_image_embeddings(model, processor)
     st.title("Demo image search")
 
-    # Añadir una barra lateral
-    st.sidebar.title("sidebar")
+    # Add a sidebar
+    st.sidebar.title("Sidebar")
 
-    # Agregar opciones a la barra lateral
+    # Add options to the sidebar
     option = st.sidebar.radio("Choose an option", ["Model", "Show all images"])
 
-    # Mostrar el contenido dependiendo de las opciones seleccionadas
-    if option=="Model":
-        # Entrada de texto y botón para procesar
-        text_input = st.text_input("Ingrese un texto para buscar similitud:")
-
+    # Show content based on selected options
+    if option == "Model":
+        text_input = st.text_input("Enter text to find similarity:")
         text_embeds = get_text_embeddings(text_input, model, processor)
-
         cosine_similarities = cosine_similarity(image_embeds, text_embeds)
         cosine_similarities_array = cosine_similarities.flatten()
+        image_indices = np.argsort(cosine_similarities_array)[-3:][::-1]
 
-        # image_index = np.argmax(cosine_similarities)
-        image_indexs = np.argsort(cosine_similarities_array)
-
-        for image_index in image_indexs[-3:][::-1]:
-
+        images = []
+        for image_index in image_indices:
             image = read_image(urls[image_index])
-            st.image(image, caption="Most similar image {image_index}", use_column_width=True)
-        # st.write("Similitud del coseno entre texto e imágenes:")
-        # st.table(cosine_similarities)
+            st.image(image, caption=f"Most similar image {image_index}", use_column_width=False)
 
     else:
-        st.write("All images used in model")
+        st.write("All images used in the model")
         for url in urls:
             image = read_image(url)
-
-            # Mostrar la imagen en Streamlit
             st.image(image, caption=f"Image from {url}", use_column_width=True)
-
-
 
 if __name__ == "__main__":
     main()
+
+
